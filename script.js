@@ -1,5 +1,5 @@
 // ============================================
-// COMPLETE WORKING PORTFOLIO JAVASCRIPT (FIXED)
+// COMPLETE WORKING PORTFOLIO JAVASCRIPT (RESPONSIVE)
 // ============================================
 
 (function () {
@@ -30,15 +30,37 @@
   });
 })();
 
-// Mobile Navigation
+// Mobile Navigation with improved touch handling
 const navToggle = document.getElementById("nav-toggle");
 const navMenu = document.getElementById("nav-menu");
 const navLinks = document.querySelectorAll(".nav-link");
 
 if (navToggle && navMenu) {
-  navToggle.addEventListener("click", () => {
+  navToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
     navToggle.classList.toggle("open");
     navMenu.classList.toggle("open");
+    document.body.style.overflow = navMenu.classList.contains("open") ? "hidden" : "";
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener("click", (e) => {
+    if (navMenu.classList.contains("open") && 
+        !navMenu.contains(e.target) && 
+        !navToggle.contains(e.target)) {
+      navToggle.classList.remove("open");
+      navMenu.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+  });
+
+  // Close menu on escape key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && navMenu.classList.contains("open")) {
+      navToggle.classList.remove("open");
+      navMenu.classList.remove("open");
+      document.body.style.overflow = "";
+    }
   });
 }
 
@@ -46,15 +68,11 @@ navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     navToggle?.classList.remove("open");
     navMenu?.classList.remove("open");
-  });
-});
-
-// Smooth scroll
-navLinks.forEach((link) => {
-  link.addEventListener("click", (e) => {
+    document.body.style.overflow = "";
+    
+    // Smooth scroll to section
     const href = link.getAttribute("href");
     if (href && href.startsWith("#")) {
-      e.preventDefault();
       const target = document.querySelector(href);
       if (target) {
         window.scrollTo({
@@ -66,23 +84,45 @@ navLinks.forEach((link) => {
   });
 });
 
+// Smooth scroll for all anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  if (anchor.getAttribute("href") !== "#") {
+    anchor.addEventListener("click", function (e) {
+      e.preventDefault();
+      const targetId = this.getAttribute("href");
+      if (targetId === "#") return;
+      
+      const targetElement = document.querySelector(targetId);
+      if (targetElement) {
+        window.scrollTo({
+          top: targetElement.offsetTop - 80,
+          behavior: "smooth"
+        });
+      }
+    });
+  }
+});
+
 // Active link on scroll
 const sections = document.querySelectorAll("section[id]");
 window.addEventListener("scroll", () => {
   const scrollY = window.pageYOffset;
+  let current = "";
 
   sections.forEach((section) => {
     const sectionHeight = section.offsetHeight;
-    const sectionTop = section.offsetTop - 90;
+    const sectionTop = section.offsetTop - 100;
     const id = section.getAttribute("id");
 
     if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
-      document.querySelectorAll(".nav-link").forEach((el) =>
-        el.classList.remove("active-link")
-      );
+      current = id;
+    }
+  });
 
-      const active = document.querySelector(`.nav-link[href="#${id}"]`);
-      active?.classList.add("active-link");
+  navLinks.forEach((link) => {
+    link.classList.remove("active-link");
+    if (link.getAttribute("href") === `#${current}`) {
+      link.classList.add("active-link");
     }
   });
 });
@@ -94,8 +134,11 @@ if (typedElement) {
   let roleIndex = 0;
   let charIndex = 0;
   let isDeleting = false;
+  let isPaused = false;
 
   function typeLoop() {
+    if (isPaused) return;
+    
     const current = roles[roleIndex];
     const speed = isDeleting ? 60 : 120;
 
@@ -117,25 +160,35 @@ if (typedElement) {
     }
     setTimeout(typeLoop, speed);
   }
+  
+  // Pause typing when tab is not visible
+  document.addEventListener("visibilitychange", () => {
+    isPaused = document.hidden;
+    if (!isPaused && !typedElement.textContent) {
+      typeLoop();
+    }
+  });
+  
   typeLoop();
 }
 
-// Scroll reveal
-const observer = new IntersectionObserver(
-  (entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("visible");
-        observer.unobserve(entry.target);
-      }
-    });
-  },
-  { threshold: 0.12 }
-);
+// Scroll reveal with improved mobile performance
+const observerOptions = {
+  threshold: 0.1,
+  rootMargin: "0px 0px -50px 0px"
+};
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("visible");
+    }
+  });
+}, observerOptions);
 
 document.querySelectorAll(".fade-in-up").forEach((el) => observer.observe(el));
 
-// Skill bars
+// Skill bars animation
 const skillObserver = new IntersectionObserver(
   (entries) => {
     entries.forEach((entry) => {
@@ -147,23 +200,26 @@ const skillObserver = new IntersectionObserver(
       }
     });
   },
-  { threshold: 0.4 }
+  { threshold: 0.3 }
 );
 
 document.querySelectorAll(".skill-bar span").forEach((span) => {
   skillObserver.observe(span);
 });
 
-// Contact form validation
+// Contact form validation with improved UX
 const contactForm = document.getElementById("contact-form");
 const successMsg = document.getElementById("form-success");
 
 if (contactForm) {
-  contactForm.addEventListener("submit", (e) => {
+  contactForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     let isValid = true;
 
-    successMsg && (successMsg.style.display = "none");
+    if (successMsg) {
+      successMsg.style.display = "none";
+      successMsg.style.opacity = "0";
+    }
 
     const fields = [
       { id: "name", message: "Name is required" },
@@ -176,55 +232,92 @@ if (contactForm) {
       if (!input) return;
 
       const error = input.closest(".input-group")?.querySelector(".error-msg");
-      error && (error.textContent = "");
+      if (error) error.textContent = "";
 
       if (!input.value.trim()) {
-        error && (error.textContent = field.message);
+        if (error) error.textContent = field.message;
         isValid = false;
+        input.style.borderColor = "#f97373";
       } else if (field.type === "email") {
         const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!pattern.test(input.value.trim())) {
-          error && (error.textContent = "Please enter a valid email address");
+          if (error) error.textContent = "Please enter a valid email address";
           isValid = false;
+          input.style.borderColor = "#f97373";
+        } else {
+          input.style.borderColor = "";
         }
+      } else {
+        input.style.borderColor = "";
       }
     });
 
     if (!isValid) return;
 
+    // Simulate form submission
+    const submitBtn = contactForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = "Sending...";
+    submitBtn.disabled = true;
+
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
     contactForm.reset();
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+
     if (successMsg) {
       successMsg.style.display = "block";
-      successMsg.style.opacity = 0;
+      successMsg.style.opacity = "0";
       successMsg.style.transform = "translateY(8px)";
+      
       requestAnimationFrame(() => {
         successMsg.style.transition = "opacity 0.4s ease, transform 0.4s ease";
-        successMsg.style.opacity = 1;
+        successMsg.style.opacity = "1";
         successMsg.style.transform = "translateY(0)";
       });
-      setTimeout(() => (successMsg.style.opacity = 0), 2600);
+
+      setTimeout(() => {
+        successMsg.style.opacity = "0";
+        setTimeout(() => {
+          successMsg.style.display = "none";
+        }, 600);
+      }, 3000);
     }
   });
 }
 
-// Ripple effect
+// Ripple effect with touch support
 document.querySelectorAll(".ripple").forEach((btn) => {
   btn.addEventListener("click", function (e) {
+    // Get click/touch position
+    let clientX, clientY;
+    if (e.type.includes("touch")) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
     const rect = this.getBoundingClientRect();
     const circle = document.createElement("span");
     const diameter = Math.max(rect.width, rect.height);
     const radius = diameter / 2;
 
     circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${e.clientX - rect.left - radius}px`;
-    circle.style.top = `${e.clientY - rect.top - radius}px`;
+    circle.style.left = `${clientX - rect.left - radius}px`;
+    circle.style.top = `${clientY - rect.top - radius}px`;
     circle.style.position = "absolute";
     circle.style.borderRadius = "50%";
-    circle.style.background = "rgba(255,255,255,0.6)";
+    circle.style.background = "rgba(255, 255, 255, 0.6)";
     circle.style.transform = "scale(0)";
     circle.style.opacity = "1";
     circle.style.pointerEvents = "none";
     circle.style.transition = "transform 0.6s, opacity 0.6s";
+    circle.style.zIndex = "1";
 
     this.style.overflow = "hidden";
     this.style.position = "relative";
@@ -237,9 +330,18 @@ document.querySelectorAll(".ripple").forEach((btn) => {
 
     setTimeout(() => circle.remove(), 600);
   });
+
+  // Add touch event for mobile
+  btn.addEventListener("touchstart", function (e) {
+    this.style.transform = "scale(0.98)";
+  }, { passive: true });
+
+  btn.addEventListener("touchend", function () {
+    this.style.transform = "";
+  }, { passive: true });
 });
 
-// Back to top
+// Back to top with smooth scroll
 const backToTopBtn = document.getElementById("back-to-top");
 if (backToTopBtn) {
   window.addEventListener("scroll", () => {
@@ -253,7 +355,9 @@ if (backToTopBtn) {
 
 // Current year
 const currentYearEl = document.getElementById("current-year");
-currentYearEl && (currentYearEl.textContent = new Date().getFullYear());
+if (currentYearEl) {
+  currentYearEl.textContent = new Date().getFullYear();
+}
 
 // Page loader
 window.addEventListener("load", () => {
@@ -261,7 +365,37 @@ window.addEventListener("load", () => {
   if (loader) {
     setTimeout(() => {
       loader.style.opacity = "0";
-      setTimeout(() => loader.remove(), 600);
+      setTimeout(() => {
+        loader.style.display = "none";
+        document.body.style.overflow = "";
+      }, 600);
     }, 800);
   }
 });
+
+// Handle window resize
+let resizeTimer;
+window.addEventListener("resize", () => {
+  document.body.classList.add("resizing");
+  clearTimeout(resizeTimer);
+  
+  resizeTimer = setTimeout(() => {
+    document.body.classList.remove("resizing");
+    
+    // Close mobile menu on large screens
+    if (window.innerWidth > 992 && navMenu?.classList.contains("open")) {
+      navToggle?.classList.remove("open");
+      navMenu?.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+  }, 250);
+});
+
+// Add CSS for resizing state
+const style = document.createElement('style');
+style.textContent = `
+  .resizing * {
+    transition: none !important;
+  }
+`;
+document.head.appendChild(style);
